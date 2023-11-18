@@ -5,7 +5,6 @@ import java.awt.event.MouseEvent;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -21,18 +20,24 @@ import java.util.*;
 		-3. 방 안에 id들
 		-4. 방 인원(vector로 관리?)
 	-3. 시간 관리
+	-4. 각 client의 스레드 관리
+	*
+	*
+	*
 * */
-
 public class GameServer extends JFrame {
     private ServerSocket SS;//ServerSocket;
     private final int Port;
     private final Vector<ClientManage> clients;
     private Thread temp;
-    private final UserManage Data;
+    private final UserManage UserData;
+    private final RoomManage RoomData;
     private TextArea log_display;
     GameServer(int port) {//현재 프레임에 서버 시작 버튼 만들기
         clients = new Vector<>();
-        Data = new UserManage();
+        UserData = new UserManage();
+        RoomData = new RoomManage();
+
         setSize(500,300);
         setDefaultLookAndFeelDecorated(true);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -55,6 +60,8 @@ public class GameServer extends JFrame {
         log_display.setEnabled(false);//건들지 못 하게
         center.add(time_display,BorderLayout.NORTH);
         center.add(log_display,BorderLayout.CENTER);
+
+
 
 
 
@@ -136,23 +143,37 @@ public class GameServer extends JFrame {
         ClientManage(Socket sc){
             socket = sc;
             clients.add(this);//현재 클래스를 계속 추가해준다
+            log_display.append(sc.getPort() +"가 접속하였습니다.\n");
             try {
                 out = new ObjectOutputStream(socket.getOutputStream());
                 in = new ObjectInputStream(socket.getInputStream());
-                out.writeObject(new ObjectMsg("접속허가"));//접속을 허가하는 것
             } catch (IOException ignored) {}
         }
         @Override
         public void run() {//서버에서는 처음에 어떤 동작을 해야 되는지 기술
             super.run();
-
-            try{
-                while((msg = (ObjectMsg) in.readObject())!=null){
-                    if(msg.getMsg().equals("시간"))out.writeObject(new ObjectMsg(getTime()));//시간 정보 보내주기
-                    else if(msg.getMsg().equals("로그인")) out.writeObject(new ObjectMsg(Data.Login(msg.getUser())));//로그인 정보 알아내기
+            while(true){
+                try {
+                    msg = (ObjectMsg) in.readObject();
+                    if(msg == null)break;
+                    System.out.println(msg);
+                    switch (msg.getMsg()) {
+                        case "시간" -> out.writeObject(new ObjectMsg(getTime()));//시간 정보 보내주기
+                        case "로그인" -> out.writeObject(new ObjectMsg(UserData.Login(msg.getUser())));//로그인 정보 알아내기
+                        case "회원가입" -> out.writeObject(new ObjectMsg(UserData.Register(msg.getUser())));
+                        case "방생성" -> out.writeObject(new ObjectMsg(RoomData.makeRoom(msg.getUser(),msg.getRoom())));
+                        case "방정보" -> out.writeObject(RoomData.getRoom(msg));
+                        case "방접근" ->{
+                            String message = RoomData.enterRoom(msg.getUser(),RoomData.getRoom(new ObjectMsg(msg.getRoom().getRoomId())).getRoom());
+                            if(message.equals("방이 꽉찼습니다."))out.writeObject(new ObjectMsg(message));
+                            else out.writeObject(RoomData.getRoom(new ObjectMsg(msg.getRoom().getRoomId())));
+                        }
+//                        case "방" -> out.writeObject();
+                    }
+                } catch (IOException | ClassNotFoundException err) {
+                    System.err.println(err);
+                    break;
                 }
-            }catch (IOException | ClassNotFoundException ignored) {
-                System.err.println("에러가 발생하였습니다.");
             }
         }
         //시간 알려주기
