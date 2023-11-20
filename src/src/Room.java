@@ -25,7 +25,6 @@ public class Room implements Serializable {
         users.add(u);
         return true;
     }
-
     
     public boolean equals(Room obj) {
         return this.adminId.equals(obj.adminId) && this.roomId.equals(obj.roomId);
