@@ -1,8 +1,13 @@
+package com.Main;
+
+import com.CommunicateObject.*;
+import com.Manage.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.*;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.LocalDateTime;
@@ -28,13 +33,13 @@ import java.util.*;
 public class GameServer extends JFrame {
     private ServerSocket SS;//ServerSocket;
     private final int Port;
-    private final Vector<ClientManage> clients;
+//    private final Vector<ClientManage> clients;
     private Thread temp;
     private final UserManage UserData;
     private final RoomManage RoomData;
     private TextArea log_display;
     GameServer(int port) {//현재 프레임에 서버 시작 버튼 만들기
-        clients = new Vector<>();
+//        clients = new Vector<>();
         UserData = new UserManage();
         RoomData = new RoomManage();
 
@@ -116,7 +121,9 @@ public class GameServer extends JFrame {
     public void StartServer() {
         try{
             if(SS!=null){throw new IOException();}
-            SS=new ServerSocket(this.Port);
+            SS=new ServerSocket();
+            String IP = "172.20.10.12";
+            SS.bind(new InetSocketAddress(IP,this.Port));
             JOptionPane.showMessageDialog(this, "서버가 시작되었습니다.");
             temp = new Thread(){
                 @Override
@@ -124,7 +131,9 @@ public class GameServer extends JFrame {
                     super.run();
                     while (true) {
                         try {
-                            new ClientManage(SS.accept()).start();//접속자 받기
+                            Socket sc = SS.accept();
+                            log_display.append(sc.getPort() + "가 새로 접속하였습니다.\n");
+                            new Client(sc).start();//접속자 받기
                         } catch (IOException ignored) {break;}
                     }
                     JOptionPane.showMessageDialog(GameServer.this, "서버가 닫혔습니다.", "", JOptionPane.ERROR_MESSAGE);
@@ -134,41 +143,64 @@ public class GameServer extends JFrame {
 
         }catch(IOException ignored){}
     }
-
-    class ClientManage extends Thread{
+    class Client extends Thread {
         ObjectOutputStream out;
         ObjectInputStream in;
         ObjectMsg msg;
+        ObjectMsg outMsg;
         Socket socket;
-        ClientManage(Socket sc){
+
+        public Client(Socket sc) {
             socket = sc;
-            clients.add(this);//현재 클래스를 계속 추가해준다
-            log_display.append(sc.getPort() +"가 접속하였습니다.\n");
             try {
                 out = new ObjectOutputStream(socket.getOutputStream());
                 in = new ObjectInputStream(socket.getInputStream());
-            } catch (IOException ignored) {}
+            } catch (IOException ignored) {
+            }
         }
+
         @Override
-        public void run() {//서버에서는 처음에 어떤 동작을 해야 되는지 기술
+        public void run() {
             super.run();
-            while(true){
+            while (true) {
                 try {
                     msg = (ObjectMsg) in.readObject();
-                    if(msg == null)break;
+                    if (msg == null) continue;
                     System.out.println(msg);
-                    switch (msg.getMsg()) {
-                        case "시간" -> out.writeObject(new ObjectMsg(getTime()));//시간 정보 보내주기
-                        case "로그인" -> out.writeObject(new ObjectMsg(UserData.Login(msg.getUser())));//로그인 정보 알아내기
-                        case "회원가입" -> out.writeObject(new ObjectMsg(UserData.Register(msg.getUser())));
-                        case "방생성" -> out.writeObject(new ObjectMsg(RoomData.makeRoom(msg.getUser(),msg.getRoom())));
-                        case "방정보" -> out.writeObject(RoomData.getRoom(msg));
-                        case "방접근" ->{
-                            String message = RoomData.enterRoom(msg.getUser(),RoomData.getRoom(new ObjectMsg(msg.getRoom().getRoomId())).getRoom());
-                            if(message.equals("방이 꽉찼습니다."))out.writeObject(new ObjectMsg(message));
-                            else out.writeObject(RoomData.getRoom(new ObjectMsg(msg.getRoom().getRoomId())));
+                    switch (msg.getMsgMode()) {
+                        case ObjectMsg.LOGIN_MODE -> {
+                            User temp = (User) msg;
+                            outMsg = new MsgMode(UserData.Login(temp));
+                            out.writeObject(outMsg);
                         }
-//                        case "방" -> out.writeObject();
+                        case ObjectMsg.REGISTER_MODE -> {
+                            User temp = (User) msg;
+                            outMsg = new MsgMode(UserData.Register(temp));
+                            out.writeObject(outMsg);
+                        }
+                        case ObjectMsg.ROOM_MAKE_MODE -> {
+                            User Tempuser = ((User) msg);
+                            Room TempRoom = (Room)Tempuser.getObj();
+                            outMsg = new MsgMode(RoomData.makeRoom(Tempuser, TempRoom));
+                            out.writeObject(outMsg);//방 만들기 성공
+                        }
+                        case ObjectMsg.ROOM_VIEW -> {
+                            Collection<Room> outData = RoomData.getIdRoom().values();
+                            outMsg = new StringMsg(new MsgMode(ObjectMsg.MSG_MODE), outData.size() + "");
+                            out.writeObject(outMsg);//방의 갯수 먼저 보내주기
+
+                            for (Room temp : outData) {
+                                temp.setMsgMode(ObjectMsg.ROOM_VIEW);
+                                outMsg = temp;
+                                out.writeObject(outMsg);
+                            }
+                        }
+                        case ObjectMsg.ROOM_MODE ->{//해당하는 클라이언트 말고 다른 모든 클라이언트한테 지금 그림을 다시 그리라고 해줘야됨.
+                            User Tempuser = ((User) msg);
+                            Room TempRoom = (Room)Tempuser.getObj();
+                            outMsg = new MsgMode(RoomData.enterRoom(Tempuser, TempRoom));
+                            out.writeObject(outMsg);//방 만들기 성공
+                        }
                     }
                 } catch (IOException | ClassNotFoundException err) {
                     System.err.println(err);
@@ -176,9 +208,5 @@ public class GameServer extends JFrame {
                 }
             }
         }
-        //시간 알려주기
-        public String getTime(){return new Date().toString();}
     }
-
-
 }
