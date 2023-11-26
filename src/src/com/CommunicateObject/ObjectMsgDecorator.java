@@ -1,5 +1,7 @@
 package com.CommunicateObject;
 
+import java.io.Serializable;
+
 public class ObjectMsgDecorator extends ObjectMsg {
     public ObjectMsgDecorator(ObjectMsg obj){
         this.obj = obj;

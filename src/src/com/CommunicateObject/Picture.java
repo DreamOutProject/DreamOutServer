@@ -1,6 +1,7 @@
 package com.CommunicateObject;
 
 import javax.swing.*;
+import java.io.Serializable;
 import java.util.Vector;
 
 public class Picture extends ObjectMsgDecorator{
@@ -13,4 +14,8 @@ public class Picture extends ObjectMsgDecorator{
     public Vector<JLabel> getPicture(){return this.picture;}
     public void addPicture(JLabel picture){this.picture.add(picture);}
 
+    @Override
+    public String toString() {
+        return "현재 그림의 사이즈는" + picture.size() + "입니다.";
+    }
 }

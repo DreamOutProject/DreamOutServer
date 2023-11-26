@@ -1,5 +1,7 @@
 package com.CommunicateObject;
 
+import java.io.Serializable;
+
 public class User extends ObjectMsgDecorator{
 	private Integer id;
 	private Integer pw;
@@ -19,5 +21,10 @@ public class User extends ObjectMsgDecorator{
 	public boolean equals(Object obj) {
 		User temp = (User)obj;
 		return temp.getId() == this.id && temp.getPw() == this.pw;
+	}
+
+	@Override
+	public String toString() {
+		return "현재 ID: "+ id + "PW : " + pw +"입니다.";
 	}
 }

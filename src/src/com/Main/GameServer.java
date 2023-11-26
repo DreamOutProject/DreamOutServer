@@ -44,7 +44,6 @@ public class GameServer extends JFrame {
         RoomData = new RoomManage();
 
         setSize(500,300);
-        setDefaultLookAndFeelDecorated(true);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
 
@@ -63,10 +62,10 @@ public class GameServer extends JFrame {
         JPanel center = new JPanel(new BorderLayout());
         log_display = new TextArea();
         log_display.setEnabled(false);//건들지 못 하게
+        JScrollPane log_scroll = new JScrollPane(log_display,JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
         center.add(time_display,BorderLayout.NORTH);
-        center.add(log_display,BorderLayout.CENTER);
-
-
+        center.add(log_scroll,BorderLayout.CENTER);
 
 
 
@@ -121,9 +120,7 @@ public class GameServer extends JFrame {
     public void StartServer() {
         try{
             if(SS!=null){throw new IOException();}
-            SS=new ServerSocket();
-            String IP = "172.20.10.12";
-            SS.bind(new InetSocketAddress(IP,this.Port));
+            SS=new ServerSocket(this.Port);
             JOptionPane.showMessageDialog(this, "서버가 시작되었습니다.");
             temp = new Thread(){
                 @Override
@@ -155,8 +152,7 @@ public class GameServer extends JFrame {
             try {
                 out = new ObjectOutputStream(socket.getOutputStream());
                 in = new ObjectInputStream(socket.getInputStream());
-            } catch (IOException ignored) {
-            }
+            } catch (IOException ignored) {}
         }
 
         @Override
@@ -166,7 +162,7 @@ public class GameServer extends JFrame {
                 try {
                     msg = (ObjectMsg) in.readObject();
                     if (msg == null) continue;
-                    System.out.println(msg);
+                    log_display.append(socket.getPort() + "가 " +msg+" 행동을 하였습니다.\n");
                     switch (msg.getMsgMode()) {
                         case ObjectMsg.LOGIN_MODE -> {
                             User temp = (User) msg;
@@ -179,21 +175,24 @@ public class GameServer extends JFrame {
                             out.writeObject(outMsg);
                         }
                         case ObjectMsg.ROOM_MAKE_MODE -> {
-                            User Tempuser = ((User) msg);
-                            Room TempRoom = (Room)Tempuser.getObj();
-                            outMsg = new MsgMode(RoomData.makeRoom(Tempuser, TempRoom));
+                            outMsg = new MsgMode(RoomData.makeRoom((User) msg, (Room) msg.obj));
                             out.writeObject(outMsg);//방 만들기 성공
                         }
                         case ObjectMsg.ROOM_VIEW -> {
                             Collection<Room> outData = RoomData.getIdRoom().values();
                             outMsg = new StringMsg(new MsgMode(ObjectMsg.MSG_MODE), outData.size() + "");
                             out.writeObject(outMsg);//방의 갯수 먼저 보내주기
-
                             for (Room temp : outData) {
                                 temp.setMsgMode(ObjectMsg.ROOM_VIEW);
                                 outMsg = temp;
                                 out.writeObject(outMsg);
                             }
+                        }
+                        case ObjectMsg.ROOM_INFO -> {//방 들어갔을 때 정보 달라고 하면
+                            System.out.println("여기는 도달?");
+                            Room TempRoom = (Room)msg;
+                            outMsg = RoomData.getRoom(TempRoom);
+                            out.writeObject(outMsg);
                         }
                         case ObjectMsg.ROOM_MODE ->{//해당하는 클라이언트 말고 다른 모든 클라이언트한테 지금 그림을 다시 그리라고 해줘야됨.
                             User Tempuser = ((User) msg);

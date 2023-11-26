@@ -1,5 +1,7 @@
 package com.CommunicateObject;
 
+import java.io.Serializable;
+
 public class StringMsg extends ObjectMsgDecorator{
     private String msg;
     public StringMsg(ObjectMsg obj,String msg){
