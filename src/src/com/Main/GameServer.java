@@ -36,8 +36,8 @@ public class GameServer extends JFrame {
     private Thread temp;
     private final UserManage UserData;
     private final RoomManage RoomData;
-    private final ConcurrentHashMap<User,Vector<Client>>UserClient;//각 유저에 맞는 클라이언트 놔두기
-    private TextArea log_display;
+    private final ConcurrentHashMap<Integer,Vector<Client>>UserClient;//각 유저에 맞는 클라이언트 놔두기
+    private final TextArea log_display;
     GameServer(int port) {//현재 프레임에 서버 시작 버튼 만들기
 //        clients = new Vector<>();
         UserData = new UserManage();
@@ -136,8 +136,8 @@ public class GameServer extends JFrame {
             temp.start();
         }catch(IOException ignored){}
     }
-    public void BroadCastRepaint() throws IOException {
-        ObjectMsg msg = new MsgMode(ObjectMsg.REPAINT_MODE);
+    public void BroadCastRepaint(int ObjectMsgMode) throws IOException {
+        ObjectMsg msg = new MsgMode(ObjectMsgMode);
         for(Vector<Client>temp : UserClient.values()){//wait룸에 있는 사람들에게 보내줘야 된다.
             if(temp.size()==2){
                 Client rC =temp.get(1);//이 클라한테 다시 그리라고 해야됨
@@ -151,7 +151,7 @@ public class GameServer extends JFrame {
         ObjectOutputStream out;
         ObjectInputStream in;
         ObjectMsg msg;
-        ObjectMsg outMsg;
+        ObjectMsg outMsg = new MsgMode(ObjectMsg.MSG_MODE);
         Socket socket;
 
         public Client(Socket sc) {
@@ -175,11 +175,11 @@ public class GameServer extends JFrame {
                             User temp = (User) msg;
                             outMsg = new MsgMode(UserData.Login(temp));
                             //해당 유저의 client를 등록
-                            if(UserClient.containsKey(temp)){//이미 접속한 적 있었으면 해당하는 0번째에 다시 덮어쓰기
-                                UserClient.get(temp).set(0,this);//현재 접속한 것으로 덮어쓰기
+                            if(UserClient.containsKey(temp.getId())){//이미 접속한 적 있었으면 해당하는 0번째에 다시 덮어쓰기
+                                UserClient.get(temp.getId()).set(0,this);//현재 접속한 것으로 덮어쓰기
                             }else{
-                                UserClient.put(temp,new Vector<>());
-                                UserClient.get(temp).add(this);//현재 것 넣어주기
+                                UserClient.put(temp.getId(),new Vector<>());
+                                UserClient.get(temp.getId()).add(this);//현재 것 넣어주기
                             }
                             out.writeObject(outMsg);
                         }
@@ -189,9 +189,12 @@ public class GameServer extends JFrame {
                             out.writeObject(outMsg);
                         }
                         case ObjectMsg.ROOM_MAKE_MODE -> {//다른 모든 유저들에게 보내주기
-                            outMsg = new MsgMode(RoomData.makeRoom((User) msg, (Room) msg.obj));
+                            System.out.println(msg);
+                            Room T = (Room)msg;
+                            User rT = (User)msg.obj;
+                            outMsg = new MsgMode(RoomData.makeRoom(rT, T));
                             out.writeObject(outMsg);//방 만들기 성공
-                            BroadCastRepaint();
+                            BroadCastRepaint(ObjectMsg.REPAINT_MODE);
                         }
                         case ObjectMsg.ROOM_VIEW -> {//WaitRoom
                             Collection<Room> outData = RoomData.getIdRoom().values();
@@ -212,16 +215,35 @@ public class GameServer extends JFrame {
                             User Tempuser = ((User) msg);
                             Room TempRoom = (Room)Tempuser.getObj();
                             outMsg = new MsgMode(RoomData.enterRoom(Tempuser, TempRoom));
-                            out.writeObject(outMsg);//방 만들기 성공
-                            BroadCastRepaint();
+                            out.writeObject(outMsg);//방 들어가기 성공
+                            sleep(1000);
+                            BroadCastRepaint(ObjectMsg.REPAINT_MODE);
                         }
                         case ObjectMsg.GAME_START_MODE -> {//GameStartRoom
                             //1. 해당하는 방에 접속한 모든 유저들에게 모두 게임 시작하라고 하기
                             //해당하는 방장이 게임을 시작하겠다고 했음
-
+                            Room TempRoom = (Room)msg;
+                            BroadCastRepaint(ObjectMsg.GAME_START_MODE);
+                        }
+                        case ObjectMsg.TEMP->{//해당 user의 repaint 연결
+                            User temp = (User)msg;
+                            outMsg.setMsgMode(ObjectMsg.FAILED);
+                            if(temp==null) System.out.println("null인뎁쇼..?");
+                            else if(!UserClient.containsKey(temp.getId())) System.out.println("어? 해당 유저 없는데?");
+                            else{
+                                UserClient.get(temp.getId()).add(this);//현재 클라 추가하기
+                                outMsg.setMsgMode(ObjectMsg.SUCESSED);
+                            }
+                            out.writeObject(outMsg);//성공 실패 알려주기
                         }
                     }
-                } catch (IOException | ClassNotFoundException error) {throw new RuntimeException(error);}
+                } catch (IOException | ClassNotFoundException error) {
+                    System.out.println(this.socket.getPort()+"해당 클라이언트가 에러발생");
+                    System.out.println(error);
+                    break;
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }
