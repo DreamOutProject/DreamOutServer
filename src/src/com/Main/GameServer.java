@@ -32,17 +32,17 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GameServer extends JFrame {
     private ServerSocket SS;//ServerSocket;
     private final int Port;
-//    private final Vector<ClientManage> clients;
     private Thread temp;
     private final UserManage UserData;
     private final RoomManage RoomData;
     private final ConcurrentHashMap<Integer,Vector<Client>>UserClient;//각 유저에 맞는 클라이언트 놔두기
     private final TextArea log_display;
     GameServer(int port) {//현재 프레임에 서버 시작 버튼 만들기
-//        clients = new Vector<>();
         UserData = new UserManage();
         RoomData = new RoomManage();
         UserClient= new ConcurrentHashMap<>();
+        UserData.addUser(new User(null,1,1));
+        UserData.addUser(new User(null,2,2));
         setSize(720,480);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
@@ -136,23 +136,27 @@ public class GameServer extends JFrame {
             temp.start();
         }catch(IOException ignored){}
     }
-    public void BroadCastRepaint(int ObjectMsgMode) throws IOException {
-        ObjectMsg msg = new MsgMode(ObjectMsgMode);
-        for(Vector<Client>temp : UserClient.values()){//wait룸에 있는 사람들에게 보내줘야 된다.
-            if(temp.size()==2){
-                Client rC =temp.get(1);//이 클라한테 다시 그리라고 해야됨
-                rC.out.writeObject(msg);
-            }
-        }
-    }
 
-
-    class Client extends Thread {
+    class Client extends Thread { //각 클라이언트
         ObjectOutputStream out;
         ObjectInputStream in;
         ObjectMsg msg;
         ObjectMsg outMsg = new MsgMode(ObjectMsg.MSG_MODE);
         Socket socket;
+        User my=null;//각 클라이언트에 해당하는 아이디를 저장할 수 있음
+        Room myroom=null;//
+
+        public void BroadCastRepaint(int ObjectMsgMode) throws IOException {
+            ObjectMsg msg = new MsgMode(ObjectMsgMode);
+            Enumeration<Integer> iter = UserClient.keys();
+            while(iter.hasMoreElements()){
+                Integer id = iter.nextElement();
+                if(my!=null && my.getId() != id){
+                    Client repaintT = UserClient.get(id).get(1);
+                    repaintT.out.writeObject(msg);
+                }
+            }
+        }
 
         public Client(Socket sc) {
             socket = sc;
@@ -161,15 +165,23 @@ public class GameServer extends JFrame {
                 in = new ObjectInputStream(socket.getInputStream());
             } catch (IOException ignored) {}
         }
-
+        public void debug(ObjectMsg m){
+            System.out.println(MsgMode.ToString(m.getMsgMode()));
+        }
         @Override
         public void run() {
             super.run();
             while (true) {
                 try {
                     msg = (ObjectMsg) in.readObject();
-                    if (msg == null) continue;
-                    log_display.append(socket.getPort() + "가 " + MsgMode.ToString(msg.getMsgMode())+"\n");
+                    if (msg == null) {
+                        System.out.println("소켓이 종료합니다.");
+                        break;
+                    }
+                    int id=-1;
+                    if(my!=null)id=my.getId();
+                    else id=socket.getPort();
+                    log_display.append(id+  "가 " + MsgMode.ToString(msg.getMsgMode())+"\n");
                     switch (msg.getMsgMode()) {
                         case ObjectMsg.LOGIN_MODE -> {
                             User temp = (User) msg;
@@ -181,42 +193,46 @@ public class GameServer extends JFrame {
                                 UserClient.put(temp.getId(),new Vector<>());
                                 UserClient.get(temp.getId()).add(this);//현재 것 넣어주기
                             }
+                            this.my = temp;
                             out.writeObject(outMsg);
+                            out.flush();
                         }
                         case ObjectMsg.REGISTER_MODE -> {
                             User temp = (User) msg;
                             outMsg = new MsgMode(UserData.Register(temp));
                             out.writeObject(outMsg);
+                            out.flush();
                         }
-                        case ObjectMsg.ROOM_MAKE_MODE -> {//다른 모든 유저들에게 보내주기
-                            System.out.println(msg);
-                            Room T = (Room)msg;
-                            User rT = (User)msg.obj;
-                            outMsg = new MsgMode(RoomData.makeRoom(rT, T));
+                        case ObjectMsg.ROOM_MAKE_MODE -> {//해당 유저가 방을 만든다.
+                            IntMsg roomsize = (IntMsg) msg; //방 사이즈만 알면 됨.
+                            outMsg = RoomData.makeRoom(this.my,roomsize.getNumber());
                             out.writeObject(outMsg);//방 만들기 성공
+                            out.flush();
                             BroadCastRepaint(ObjectMsg.REPAINT_MODE);
                         }
-                        case ObjectMsg.ROOM_VIEW -> {//WaitRoom
+                        case ObjectMsg.ROOM_VIEW -> {//대기방일 때 방 정보 주세요.
                             Collection<Room> outData = RoomData.getIdRoom().values();
-                            outMsg = new StringMsg(new MsgMode(ObjectMsg.MSG_MODE), outData.size() + "");
+                            outMsg = new IntMsg(new MsgMode(ObjectMsg.MSG_MODE), outData.size());
                             out.writeObject(outMsg);//방의 갯수 먼저 보내주기
+                            out.flush();
                             for (Room temp : outData) {
-                                temp.setMsgMode(ObjectMsg.ROOM_VIEW);
-                                outMsg = temp;
-                                out.writeObject(outMsg);
+                                out.writeObject(temp);
+                                out.flush();
                             }
                         }
-                        case ObjectMsg.ROOM_INFO -> {//GameRoom
-                            Room TempRoom = (Room)msg;
-                            outMsg = RoomData.getRoom(TempRoom);
+                        case ObjectMsg.ROOM_INFO -> {//게임 방 들어갔을 떄 해당 방의 정보 주세요
+                            IntMsg roomid = (IntMsg)msg;
+                            outMsg = RoomData.getRoom(roomid.getNumber());
+                            Date t = new Date();
+                            System.out.println(t.toString()+ outMsg);
                             out.writeObject(outMsg);
+                            out.flush();
                         }
-                        case ObjectMsg.ROOM_MODE ->{//GameRoom 들어가기 직전
-                            User Tempuser = ((User) msg);
-                            Room TempRoom = (Room)Tempuser.getObj();
-                            outMsg = new MsgMode(RoomData.enterRoom(Tempuser, TempRoom));
+                        case ObjectMsg.ROOM_MODE ->{//대기실에 떠있는 방 중에서 클릭하여 방에 들어갈 떄
+                            IntMsg roomid = (IntMsg)msg;
+                            outMsg = new MsgMode(RoomData.enterRoom(this.my, roomid.getNumber()));
                             out.writeObject(outMsg);//방 들어가기 성공
-                            sleep(1000);
+                            out.flush();
                             BroadCastRepaint(ObjectMsg.REPAINT_MODE);
                         }
                         case ObjectMsg.GAME_START_MODE -> {//GameStartRoom
@@ -231,19 +247,32 @@ public class GameServer extends JFrame {
                             if(temp==null) System.out.println("null인뎁쇼..?");
                             else if(!UserClient.containsKey(temp.getId())) System.out.println("어? 해당 유저 없는데?");
                             else{
-                                UserClient.get(temp.getId()).add(this);//현재 클라 추가하기
+                                if(UserClient.get(temp.getId()).size() == 2){
+                                    UserClient.get(temp.getId()).set(1,this);//현재 클라 추가하기
+                                }else{
+                                    UserClient.get(temp.getId()).add(this);//현재 클라 추가하기
+                                }
+                                this.my = new User(null,temp.getId(),0);
                                 outMsg.setMsgMode(ObjectMsg.SUCESSED);
                             }
                             out.writeObject(outMsg);//성공 실패 알려주기
+                            out.flush();
+                        }
+                        default -> {
+                            System.out.println("이상한 데이터 들어왔어요");
                         }
                     }
                 } catch (IOException | ClassNotFoundException error) {
                     System.out.println(this.socket.getPort()+"해당 클라이언트가 에러발생");
                     System.out.println(error);
                     break;
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
                 }
+            }
+            try {
+                socket.close();
+                UserClient.remove(my.getId());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
     }
