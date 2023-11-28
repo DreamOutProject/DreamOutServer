@@ -222,10 +222,10 @@ public class GameServer extends JFrame {
                         }
                         case ObjectMsg.ROOM_INFO -> {//게임 방 들어갔을 떄 해당 방의 정보 주세요
                             IntMsg roomid = (IntMsg)msg;
-                            outMsg = RoomData.getRoom(roomid.getNumber());
-                            Date t = new Date();
-                            System.out.println(t.toString()+ outMsg);
-                            out.writeObject(outMsg);
+                            Room rooms = RoomData.getRoom(roomid.getNumber());
+                            System.out.println(my.getId()+"에게" +rooms.getUsers().size()+"만큼의 사람을 보냅니다.");
+                            rooms.setMsgMode(ObjectMsg.REGISTER_MODE);
+                            out.writeObject(rooms);
                             out.flush();
                         }
                         case ObjectMsg.ROOM_MODE ->{//대기실에 떠있는 방 중에서 클릭하여 방에 들어갈 떄
