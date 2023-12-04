@@ -1,45 +1,34 @@
 package com.Manage;
 
-import com.CommunicateObject.ObjectMsg;
-import com.CommunicateObject.ObjectMsgDecorator;
 import com.CommunicateObject.User;
 
-import java.io.Serializable;
-import java.util.Vector;
+public class UserManage extends Manage{
 
-public class UserManage implements Serializable {
-    private final Vector<User> data;
-    public UserManage(){
-        data = new Vector<>();
-    }
-    public void addUser(User user){data.add(user);}
-    public boolean isContainId(int id){//해당 아이디가 있는지 먼저 판단
-        for(User us:data){
-            if(us.getId() == id)return true;
+    @Override
+    public boolean isContain(Object o) {
+        if(o instanceof User u){
+            for(Object temp:data){
+                if(!(temp instanceof User))continue;
+                if(u.equals(temp))return true;
+            }
         }
         return false;
     }
-    private int getIdx(User u){//선행 되어야 하는것은 isContainId이다.
-        for(int i=0;i<data.size();i++){
-            if(data.get(i).equals(u))return i;
+
+    @Override
+    public boolean add(Object o) {
+        if(o instanceof User u){
+            data.add(u);
+            return true;
         }
-        return -1;
+        return false;
     }
-    public int Login(User u){//로그인 절차
-        //1. 아이디 있는지 판단
-        if(!isContainId(u.getId()))return ObjectMsg.FAILED;//없으면 false 보내기
 
-        //2. 해당하는 아이디의 비밀번호가 맞는지 판단
-        int idx=getIdx(u);
-        if(idx==-1 || !data.get(idx).IsPw(u))return ObjectMsg.FAILED;
-
-        //3.최종적으로 로그인 성공으로 true 보내주기;
-        return ObjectMsg.SUCESSED;
+    public boolean register(User u){
+        if(isContain(u))return false;//실패
+        return add(u);//현재 데이터 넣어주기;
     }
-    public int Register(User u){//회원가입
-        //1. 아이디가 있는지 판단
-        if(isContainId(u.getId()))return ObjectMsg.FAILED;
-        addUser(u);
-        return ObjectMsg.SUCESSED;
+    public boolean login(User u){
+        return isContain(u);
     }
 }

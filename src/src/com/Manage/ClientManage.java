@@ -4,7 +4,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class ClientManage extends Manage{
-    public ConcurrentMap<Client,Client>reapintClient= new ConcurrentHashMap<>();
+    public ConcurrentMap<Client,Client> repaintClient = new ConcurrentHashMap<>();
+    public ConcurrentMap<Integer,Client> IDtoClient = new ConcurrentHashMap<>();
     @Override
     public boolean isContain(Object o) {
         if(o instanceof Client c){
@@ -15,7 +16,6 @@ public class ClientManage extends Manage{
         }
         return false;
     }
-
     @Override
     public boolean add(Object o) {
         if(o instanceof Client c){
@@ -29,7 +29,7 @@ public class ClientManage extends Manage{
             if(!(c instanceof Client))continue;
             Client t = (Client) c;
             if (t.ID.equals(repaint.ID)){
-                reapintClient.put(t,repaint);//현재 같은 클라이다.
+                repaintClient.put(t,repaint);//현재 같은 클라이다.
                 return true;
             }
         }

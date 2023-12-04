@@ -45,6 +45,8 @@ public class Client extends Thread{
                         if(flag){
                             outMsg.setMod(MODE.SUCCESSED);
                             ID = new User(u);//현재 클라이언트의 아이디 설정
+                            //설정하고 나서 ID에 맞는 클라이언트를 서버에 저장
+                            main.cm.IDtoClient.put(ID.getId(), this);//ID에 맞게 클라 연결
                         }
                         outputStream.writeObject(outMsg);
                     }
@@ -88,7 +90,7 @@ public class Client extends Thread{
                             Room ret = main.rm.getRoom(r);
                             room = new Room(ret);//현재 방 설정
                             outputStream.writeObject(ret);
-                            //다른 유저들에게는 현재 그림을 다시 그리라고 전달해줘야 됨.
+                            //다른 모든 유저들에게는 현재 그림을 다시 그리라고 전달해줘야 됨.
                             BroadRepaint();
                         }
                     }
@@ -98,7 +100,9 @@ public class Client extends Thread{
                         outputStream.writeObject(ret);//방 정보 주기
                     }
                     case GAME_START_MODE -> {//게임 시작하면 다른 사람들에게도 게임 시작했다고 알려줘야 됨.
-
+                        //Room mode에서 방정보를 알게 되었으니 그 방에 대한 서버 정보를 토대로
+                        //같은 방 유저에게 다시 보내준다.
+                        SameRoomGameStart();//
                     }
                     case REPAINT_NOTIFY -> {//리페인트가 붙었는지 확인
                         User u = (User)msg;
@@ -117,8 +121,8 @@ public class Client extends Thread{
                     }
                     System.out.println(this+"가 방에서 나왔습니다.");
                 }
-                if(main.cm.reapintClient.containsKey(this)){
-                    main.cm.reapintClient.remove(this);
+                if(main.cm.repaintClient.containsKey(this)){
+                    main.cm.repaintClient.remove(this);
                     System.out.println("성공적으로 리페인트 객체도 삭제하였습니다.");
                 }
                 System.out.println(this + "클라이언트 종료하였습니다");
@@ -128,9 +132,32 @@ public class Client extends Thread{
 
         }
     }
-
+    public void SameRoomGameStart(){//방장이 보내는 거임
+        Room r = main.rm.getRoom(this.room);//현재 방정보를 토대로 서버에 저장된 방 갖고 오기
+        while(r.getMOD()==FAILED)r = main.rm.getRoom(this.room);//현재 방 갖고 오기
+        //이 방
+        if(main.rm.RoomToggle(r)){
+            //해당 방 지금 들어가지 못하도록 만들기
+            //제대로 됐는지 확인
+            Room t = main.rm.getRoom(r);
+            System.out.println(t.getInto());
+        }
+        MOD outMsg = new MOD(GAME_START_MODE);
+        for(int id : r.getParticipant()){//방에 있는 모든 아이디
+            if(!main.cm.IDtoClient.containsKey(id)) System.out.println("엥 해당 아이디에 맞는 클라없음");
+            else {//클라가 있을 때 그 클라
+                Client c = main.cm.IDtoClient.get(id);
+                Client repaint = main.cm.repaintClient.get(c);
+                try{
+                    repaint.outputStream.writeObject(outMsg);
+                } catch (IOException e) {
+                    System.out.println("다른 유저들에게 게임 시작하라고 보내지 못 하였습니다.");
+                }
+            }
+        }
+    }
     public void BroadRepaint() {
-        for(Client repaint : main.cm.reapintClient.values()){//
+        for(Client repaint : main.cm.repaintClient.values()){//
             if(repaint.ID.equals(this.ID))continue;//아이디가 같으면 보내지 않아도 됨.
             MOD outMsg = new MOD(REPAINT_MODE);
             try {

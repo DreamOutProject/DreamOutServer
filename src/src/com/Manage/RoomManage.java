@@ -1,43 +1,76 @@
 package com.Manage;
 
-import com.CommunicateObject.MsgMode;
-import com.CommunicateObject.ObjectMsg;
+import com.CommunicateObject.MODE;
 import com.CommunicateObject.Room;
 import com.CommunicateObject.User;
 
-import java.io.Serializable;
-import java.util.concurrent.ConcurrentHashMap;
-
-
-public class RoomManage implements Serializable {
-    private ConcurrentHashMap<Integer,Room> idRoom;
-
-    public RoomManage(){
-        idRoom = new ConcurrentHashMap<>();
-    }
-    public void addRoom(Room room){//서버에 해당 방 등록
-        idRoom.put(room.getRoomId(),room);
-    }
-
-    public Room makeRoom(User u,Integer roomsize){//자동으로 서버에서 방을 만들고 그 방을 클라이언트에게 알려주기
-        Room newRoom = new Room(new MsgMode(ObjectMsg.SUCESSED),u.getId(),u.getId(),roomsize);
-        newRoom.addUser(u);
-        addRoom(newRoom);
-        return newRoom;
-    }
-    public int enterRoom(User u,Integer roomid){
-        if(!idRoom.containsKey(roomid))return ObjectMsg.FAILED;//방이 없음
-        if(!idRoom.get(roomid).addUser(u))return ObjectMsg.FAILED;//방 들어가기 실패
-        return ObjectMsg.SUCESSED;
-    }
-    public Room getRoom(Integer roomid){
-        if(!idRoom.containsKey(roomid)){
-            Room room = new Room(new MsgMode(ObjectMsg.FAILED),0,0,0);
-            return room;//실패한 룸 보내주기
+public class RoomManage extends Manage{
+    @Override
+    public boolean isContain(Object o) {
+        if(o instanceof Room r){
+            for(Object temp: data){
+                if(!(temp instanceof Room))continue;
+                if(r.equals(temp))return true;
+            }
         }
-        Room temp = idRoom.get(roomid);
-        temp.setMsgMode(ObjectMsg.SUCESSED);
-        return temp;//서버에 저장된 룸으로 보내주기
+        return false;
     }
-    public ConcurrentHashMap<Integer,Room> getIdRoom(){return this.idRoom;}
+    public boolean RoomToggle(Room r){
+        for(Object temp:data){
+            if(r.equals(temp)){
+                ((Room)temp).setInto(!((Room) temp).getInto());
+                return true;
+            }
+        }
+        return false;
+    }
+    public Room getRoom(Room r){
+        Room ret;
+        for(Object temp:data){
+            if(r.equals(temp)){
+                ret = new Room((Room)temp);
+                ret.setMod(MODE.SUCCESSED);
+                return ret;
+            }
+        }
+        ret = new Room(r);
+        ret.setMod(MODE.FAILED);
+        return ret;
+    }
+    public boolean enterRoom(Room r, User u){
+        if(!isContain(r))return false;
+        Room curR = getRoom(r);
+        if(!curR.getInto())return false;//들어갈 수 없다면 애초에 안 됨.
+        for(Object temp:data){
+            if(curR.equals(temp)){
+                return ((Room)temp).addUser(u);
+            }
+        }
+        return false;
+    }
+    public boolean makeRoom(int size,User u){
+        Room nr = new Room(u.getId(),size);
+        if(!isContain(nr)){
+            data.remove(nr);//원래 있던 방 삭제하기
+        }
+        if(!nr.addUser(u))return false;
+        return add(nr);//현재 방 만들기
+    }
+    public boolean exitRoom(Room r,User u){
+        for(Object temp:data){
+            if(r.equals(temp)){
+                Room t = (Room)temp;
+                return t.removeUser(u);
+            }
+        }
+        return false;
+    }
+    @Override
+    public boolean add(Object o) {
+        if(o instanceof Room r){
+            data.add(r);
+            return true;
+        }
+        return false;
+    }
 }
