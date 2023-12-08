@@ -28,7 +28,8 @@ public class ClientManage extends Manage{
         for(Object c : data){
             if(!(c instanceof Client))continue;
             Client t = (Client) c;
-            if (t.ID.equals(repaint.ID)){
+
+            if (t.ID!=null &&t.ID.equals(repaint.ID)){
                 repaintClient.put(t,repaint);//현재 같은 클라이다.
                 return true;
             }

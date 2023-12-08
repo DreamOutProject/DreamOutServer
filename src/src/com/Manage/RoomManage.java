@@ -4,7 +4,14 @@ import com.CommunicateObject.MODE;
 import com.CommunicateObject.Room;
 import com.CommunicateObject.User;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class RoomManage extends Manage{
+    private Map<Integer, Integer>Wait;//모두 끝이 났는지 파악하기 위해
+    public RoomManage(){
+        Wait = new ConcurrentHashMap<>();//생성
+    }
     @Override
     public boolean isContain(Object o) {
         if(o instanceof Room r){
@@ -72,5 +79,35 @@ public class RoomManage extends Manage{
             return true;
         }
         return false;
+    }
+    public boolean setChoice(Room r,int num){
+        for(Object d:data){
+            if(r.equals(d)){
+                ((Room)d).setGamecategory(num);
+                return true;
+            }
+        }
+        return false;
+    }
+    public boolean nextRound(Room r){
+        for(Object t:data){
+            if(r.equals(t)){//해당하는 방 찾아냄
+                ((Room)t).nextRound();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void newWait(Room room) {
+        Wait.put(room.getRoomId(),0);//데이터 새로 만들기
+    }
+    public synchronized void setWait(Room room){
+        int waitCnt = Wait.get(room.getRoomId());
+        Wait.put(room.getRoomId(),waitCnt+1);
+        System.out.println("Wait cnt : " + Wait.get(room.getRoomId()));
+    }
+    public int getWait(Room room){
+        return Wait.get(room.getRoomId());
     }
 }

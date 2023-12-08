@@ -1,9 +1,7 @@
 package com.Main;
 
-import com.Manage.Client;
-import com.Manage.ClientManage;
-import com.Manage.RoomManage;
-import com.Manage.UserManage;
+import com.CommunicateObject.User;
+import com.Manage.*;
 import com.UI.MainUI;
 
 import javax.swing.*;
@@ -23,12 +21,19 @@ public class ServerProcessing {
     public RoomManage rm;
     public UserManage um;
     public ClientManage cm;
+    public PictureManage pm;
     public boolean flag =false;
     public Thread clientAccept=null;
     public ServerProcessing(){
         rm = new RoomManage();
         um = new UserManage();
         cm = new ClientManage();
+        pm = new PictureManage();
+
+        um.register(new User(1,1));
+        um.register(new User(2,2));
+        um.register(new User(3,3));
+
 
         mainFrame = new JFrame("DreamOut Server");
         mainFrame.setSize(720  ,480);
