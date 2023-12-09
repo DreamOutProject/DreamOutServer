@@ -2,6 +2,7 @@ package com.CommunicateObject;
 
 import javax.swing.*;
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.Vector;
 
 public class Picture extends MOD implements Serializable {
@@ -28,5 +29,14 @@ public class Picture extends MOD implements Serializable {
         if(this.files.size()<=index)return false;
         this.files.set(index,d);//해당 데이터로 셋팅하자.
         return true;
+    }
+    @Override
+    public boolean equals(Object o) {
+        return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), getFiles());
     }
 }

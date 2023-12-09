@@ -23,6 +23,7 @@ public class PictureManage{
     public void newAlbum(Room r){
         Vector<Picture>newAlbum = new Vector<>();//큰 사진첩 만들기
         int part = r.getParticipant().size();
+        System.out.println("사람 수 :" + part);
         for(int i=0;i<part;i++){//사람 수만큼 앨범 미리 만들어서 넣어놓자
             Picture temp = new Picture(part);
             newAlbum.add(temp);//

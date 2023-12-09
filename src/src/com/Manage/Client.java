@@ -3,7 +3,7 @@ package com.Manage;
 import com.CommunicateObject.*;
 import com.Main.ServerProcessing;
 
-import javax.swing.plaf.metal.MetalIconFactory;
+import javax.swing.*;
 import java.io.*;
 import java.net.Socket;
 import java.util.Vector;
@@ -107,8 +107,10 @@ public class Client extends Thread{
                         }else if(msg.getMOD() == GAME_ONE_CHOICE){
                             main.rm.setChoice(room,1);
                         }else{//게임 시작
-                            main.pm.newAlbum(main.rm.getRoom(room));
-                            main.rm.newWait(room);
+                            Room r = main.rm.getRoom(room);
+                            main.pm.newAlbum(r);
+                            main.rm.newWait(r);
+                            main.rm.RoomToggle(r);//토글해주기
                             //서버에서 방에 맞게 해당 앨범을 새로 만든다.
                         }
                         SameRoomBroadCast(msg);//
@@ -129,7 +131,7 @@ public class Client extends Thread{
                         Vector<Integer>part = r.getParticipant();//같은 방 안에 있는 데이터
                         for(int i=0;i<part.size();i++){
                             if(part.get(i) == ID.getId()){//이 인덱스에다가
-                                Picture outMsg = data.get((i+r.getRound()-1)%part.size());//이 인덱스에다가 현재 진행 중인 인덱스 더해주기
+                                Picture outMsg = new Picture(data.get((i+r.getRound()-1)%part.size()));//이 인덱스에다가 현재 진행 중인 인덱스 더해주기
                                 outMsg.setMod(PICTURE_MODE);
                                 outputStream.writeObject(outMsg);//데이터 보내기
                             }
@@ -150,14 +152,11 @@ public class Client extends Thread{
                     case TEMP->{//게임 끝?
                         //해당 모든 방에 아이들이 끝인지 확인
                         //일단 끝났는지 true
-                        System.out.println(ID + "가 TEMP를 보냈습니다.");
                         main.rm.setWait(room);//내 거 하나 증가
                         int total = main.rm.getRoom(room).getParticipant().size();
-                        System.out.println(main.rm.getWait(room));
-                        while(main.rm.getWait(room)!=total){
+                        while(main.rm.getWait(room)!=total){ //애들 다같이 끝나게 하기
                             try {
                                 sleep(500);
-                                System.out.println(main.rm.getWait(room));
                             } catch (InterruptedException e) {
                                 System.out.println("뿌려줄까?");
                             }
@@ -167,10 +166,33 @@ public class Client extends Thread{
                     }
                     case GAME_END -> {
                         Vector<Picture>P= main.pm.getAlbum(room);
+                        Room r = main.rm.getRoom(room);
                         for(Picture temP : P){
-                            outputStream.writeObject(temP);
+                            Picture outMsg = new Picture(temP);
+                            outputStream.writeObject(outMsg);
                         }
                         MOD outMsg = new MOD(SUCCESSED);
+                        outputStream.writeObject(outMsg);
+                    }
+                    case ENDING_START_MODE,ENDING_NEXT_MODE,ENDING_PREV_MODE,RETURN_GAMEROOM -> {
+                        //같은 방에 있는 사람들에게 첫번 째 앨범 시작하라고 보내기
+                        if(msg.getMOD() == RETURN_GAMEROOM){
+                            Room r = main.rm.getRoom(room);
+                            main.rm.RoomToggle(r);//토글해주기
+                        }
+                        SameRoomBroadCast(msg);
+                    }
+                    case RETURN_WAITROOM  -> {
+                        Room r = main.rm.getRoom(room);
+                        boolean flag =main.rm.exitRoom(r,ID);
+                        MOD outMsg = new MOD(FAILED);
+                        if(flag){
+                            outMsg.setMod(SUCCESSED);
+                            if(r.getAdminId() == ID.getId()){//아이디가 같으므로 삭제
+                                main.rm.remove(r);//방삭제하기
+                            }
+                            this.room = null;//널 주기
+                        }
                         outputStream.writeObject(outMsg);
                     }
                 }
@@ -223,6 +245,7 @@ public class Client extends Thread{
             else {//클라가 있을 때 그 클라
                 Client c = main.cm.IDtoClient.get(id);
                 Client repaint = main.cm.repaintClient.get(c);
+                if(repaint==null)continue;//
                 try{
                     repaint.outputStream.writeObject(outMsg);//게임 시작하라고 보내주기
                 } catch (IOException e) {
