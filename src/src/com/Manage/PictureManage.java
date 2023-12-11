@@ -2,11 +2,10 @@ package com.Manage;
 
 import com.CommunicateObject.Picture;
 import com.CommunicateObject.Room;
+import com.CommunicateObject.User;
 
 import javax.swing.*;
 import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 //TO do.
 /*
@@ -32,12 +31,21 @@ public class PictureManage{
         roomToPictures.add(newAlbum);
         roomids.add(r.getRoomId());
     }
+    public boolean removeAlbum(Room r){
+        for(int i=0;i<roomids.size();i++){
+            if(roomids.get(i)==r.getRoomId()){
+                roomids.remove(i);
+                roomToPictures.remove(i);
+                return true;
+            }
+        }
+        return false;
+    }
 
     public Vector<Picture> getAlbum(Room r){
         for(int i=0;i<roomids.size();i++){
             if(roomids.get(i)==r.getRoomId()){
-                System.out.println("있어요 살려줘요 제발");
-                return roomToPictures.get(i);
+                return new Vector<>(roomToPictures.get(i));
             }
         }
         return new Vector<>();
@@ -45,8 +53,23 @@ public class PictureManage{
     public boolean setAlbum(Room r,Vector<Picture> album){
         for(int i=0;i<roomids.size();i++){
             if(roomids.get(i)==r.getRoomId()){
-                System.out.println("있어요 살려줘요 제발");
                 roomToPictures.set(i,album);
+                return true;
+            }
+        }
+        return false;
+    }
+    public boolean setRoundAlbum(Room r, Picture album, User ID){
+        int index=-1;
+        for(int j=0;j<r.getParticipant().size();j++){
+            if(r.getParticipant().get(j)==ID.getId()){
+                index=(j+r.getRound()-1)%r.getParticipant().size();
+                break;
+            }
+        }
+        for(int i=0;i<roomids.size();i++){
+            if(roomids.get(i)==r.getRoomId()){
+                roomToPictures.get(i).set(index,album);
                 return true;
             }
         }

@@ -110,7 +110,9 @@ public class ServerProcessing {
                     System.out.println("뿌려줄까?");
                 }
             }
+            System.out.println(room +"방 다음으로 넘어가세요");
             RoomSpreadData();
+            rm.WaitReset(room);//현재 방 리셋 시작
         }
         private void RoomSpreadData() {//지금 접속한 룸에 있는 모든 사람들에게 뿌려주기
             Room r = rm.getRoom(room);//실시간으로 방 갖고 오고
@@ -122,6 +124,7 @@ public class ServerProcessing {
                 Client c = cm.IDtoClient.get(id);//i번째 클라이언트
                 try {
                     c.outputStream.writeObject(outMsg);
+                    System.out.println(id+"한테 보냈습니다.");
                 } catch (IOException e) {
                     System.out.println("모든 클라이언트에게 데이터를 보내지 못 했습니다.");
                 }

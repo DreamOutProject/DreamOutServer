@@ -123,7 +123,16 @@ public class RoomManage extends Manage{
         }
         return false;
     }
-
+    public boolean EndGame(Room r){
+        for(int i=0;i<Roomid.size();i++){
+            if(r.getRoomId() == Roomid.get(i)){
+                Wait.remove(i);
+                Roomid.remove(i);
+                return true;
+            }
+        }
+        return false;
+    }
     public synchronized void newWait(Room room) {
         Roomid.add(room.getRoomId());
         Wait.add(0);//0이라고 넣기

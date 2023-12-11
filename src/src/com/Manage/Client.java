@@ -132,16 +132,17 @@ public class Client extends Thread{
                         Vector<Integer>part = r.getParticipant();//같은 방 안에 있는 데이터
                         for(int i=0;i<part.size();i++){
                             if(part.get(i) == ID.getId()){//이 인덱스에다가
-                                Picture outMsg = new Picture(data.get((i+r.getRound()-1)%part.size()));//이 인덱스에다가 현재 진행 중인 인덱스 더해주기
+                                MOD outMsg = new Picture(data.get((i+r.getRound()-1)%part.size()));//이 인덱스에다가 현재 진행 중인 인덱스 더해주기
                                 outMsg.setMod(PICTURE_MODE);
                                 outputStream.writeObject(outMsg);//데이터 보내기
+                                System.out.println(part.get(i)+"에게 그림데이터를 보냈습니다.");
                             }
                         }
                     }
                     case PICTURE_MODE -> {//클라에서 사진 데이터를 보낸 거임
                         Room r = main.rm.getRoom(room);
-                        Vector<Picture> pictureData = main.pm.getAlbum(r);
                         Picture data = (Picture) msg;
+                        System.out.println(data.getFiles().get(r.getRound()-1).getIcon());
                         for(int i=0;i<data.getFiles().size();i++){
                             if(data.getFiles().get(i)==null)continue;
                             main.paintTest.add(data.getFiles().get(i));
@@ -150,34 +151,29 @@ public class Client extends Thread{
                         main.paintTest.revalidate();
                         int cur = r.getRound()-1;//현재 라운드..
                         Vector<Integer>part = r.getParticipant();//같은 방 안에 있는 데이터
-                        for(int i=0;i<part.size();i++){
-                            if(part.get(i) == ID.getId()){//이 인덱스에다가
-                                System.out.println(i+"번째 인덱스 그림 앨범에" + ID.getId()+"가 "+((i+cur)%part.size())+"인덱스로 그림을 셋팅했습니다.");
-                                pictureData.set((i+cur)%part.size(),data);//해당하는 라운드에 맞는 데이터를 넣기
-                            }
-                        }
+                        main.pm.setRoundAlbum(r,data,ID);//해당하는 라운드에 맞는 데이터를 넣기
                     }
                     case NEXT_ROUND -> {//다음 라운드로 넘기기
                         System.out.println("다음 라운드로 넘어갑니다.");
-                        main.rm.WaitReset(room);//현재 방 리셋 시작
                         main.rm.nextRound(room);//한 방에 한 번만 시행되어야 함.
                     }
                     case TEMP,WAITING->{//게임 끝?
                         //해당 모든 방에 아이들이 끝인지 확인
                         //일단 끝났는지 true
-                        main.Roomnext = new ServerProcessing.RoomNext(room);
-                        main.Roomnext.start();
+                        new ServerProcessing.RoomNext(room).start();
                         main.rm.WaitIncrease(room);//내 거 하나 증가
                     }
                     case GAME_END -> {
-                        Vector<Picture>P= main.pm.getAlbum(room);
+                        main.rm.WaitReset(room);//해당 방 리셋시켜놓기
+                        main.rm.EndGame(room);
+                        Vector<Picture>P= new Vector<>(main.pm.getAlbum(room));
                         Room r = main.rm.getRoom(room);
                         int j=0;
                         for(Picture temP : P){
                             for(int i=0;i< temP.getFiles().size();i++){
                                 System.out.println(j+"의 "+i+"번째가 : " + temP.getFiles().get(i)+"입니다.");
                             }
-                            Picture outMsg = new Picture(temP);
+                            MOD outMsg = new Picture(temP);
                             outputStream.writeObject(outMsg);
                             j++;
                         }
@@ -211,6 +207,7 @@ public class Client extends Thread{
                 if(room!=null && main.rm.exitRoom(room,ID)) {
                     if(room.getAdminId() == ID.getId()){
                         if(main.rm.remove(room))System.out.println("방이 삭제되었습니다.");
+                        main.pm.removeAlbum(room);
                     }
                     System.out.println(this+"가 방에서 나왔습니다.");
                 }
