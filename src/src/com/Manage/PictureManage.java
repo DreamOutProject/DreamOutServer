@@ -14,30 +14,42 @@ import java.util.concurrent.ConcurrentMap;
 * 무슨 사진첩이 있는지 확인해야 된다.
 * */
 public class PictureManage{
-    public ConcurrentMap<Integer, Vector<Picture>>roomToPictures;
     //id에 저장된 index에 맞게 picture
     //해당 방에 대한 사진 정보들
+    public Vector<Vector<Picture>>roomToPictures;
+    public Vector<Integer>roomids;
     public PictureManage(){
-        roomToPictures = new ConcurrentHashMap<>();//생성
+        roomToPictures = new Vector<>();//생성
+        roomids = new Vector<>();
     }
     public void newAlbum(Room r){
         Vector<Picture>newAlbum = new Vector<>();//큰 사진첩 만들기
         int part = r.getParticipant().size();
-        System.out.println("사람 수 :" + part);
         for(int i=0;i<part;i++){//사람 수만큼 앨범 미리 만들어서 넣어놓자
             Picture temp = new Picture(part);
             newAlbum.add(temp);//
         }
-        roomToPictures.put(r.getRoomId(),newAlbum);
+        roomToPictures.add(newAlbum);
+        roomids.add(r.getRoomId());
     }
 
     public Vector<Picture> getAlbum(Room r){
-        if(!roomToPictures.containsKey(r.getRoomId()))return new Vector<>();
-        return roomToPictures.get(r.getRoomId());//데이터 갖고 오기
+        for(int i=0;i<roomids.size();i++){
+            if(roomids.get(i)==r.getRoomId()){
+                System.out.println("있어요 살려줘요 제발");
+                return roomToPictures.get(i);
+            }
+        }
+        return new Vector<>();
     }
     public boolean setAlbum(Room r,Vector<Picture> album){
-        if(!roomToPictures.containsKey(r.getRoomId()))return false;//실패
-        roomToPictures.put(r.getRoomId(),album);//서버에서 갖고 온 데이터를 다시 설정
-        return true;
+        for(int i=0;i<roomids.size();i++){
+            if(roomids.get(i)==r.getRoomId()){
+                System.out.println("있어요 살려줘요 제발");
+                roomToPictures.set(i,album);
+                return true;
+            }
+        }
+        return false;
     }
 }

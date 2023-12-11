@@ -4,6 +4,7 @@ import com.CommunicateObject.*;
 import com.Main.ServerProcessing;
 
 import javax.swing.*;
+import java.awt.*;
 import java.io.*;
 import java.net.Socket;
 import java.util.Vector;
@@ -141,35 +142,44 @@ public class Client extends Thread{
                         Room r = main.rm.getRoom(room);
                         Vector<Picture> pictureData = main.pm.getAlbum(r);
                         Picture data = (Picture) msg;
-                        System.out.println(data.getFiles().size());
-                        int cur =r.getRound()-1;//현재 라운드..
-                        System.out.println("현재 라운드는 : " + cur);
-                        pictureData.set(cur,data);//해당하는 라운드에 맞는 데이터를 넣기
-                    }
-                    case NEXT_ROUND -> {//다음 라운드로 넘기기
-                        main.rm.nextRound(room);//한 방에 한 번만 시행되어야 함.
-                    }
-                    case TEMP->{//게임 끝?
-                        //해당 모든 방에 아이들이 끝인지 확인
-                        //일단 끝났는지 true
-                        main.rm.setWait(room);//내 거 하나 증가
-                        int total = main.rm.getRoom(room).getParticipant().size();
-                        while(main.rm.getWait(room)!=total){ //애들 다같이 끝나게 하기
-                            try {
-                                sleep(500);
-                            } catch (InterruptedException e) {
-                                System.out.println("뿌려줄까?");
+                        for(int i=0;i<data.getFiles().size();i++){
+                            if(data.getFiles().get(i)==null)continue;
+                            main.paintTest.add(data.getFiles().get(i));
+                        }
+                        main.paintTest.repaint();
+                        main.paintTest.revalidate();
+                        int cur = r.getRound()-1;//현재 라운드..
+                        Vector<Integer>part = r.getParticipant();//같은 방 안에 있는 데이터
+                        for(int i=0;i<part.size();i++){
+                            if(part.get(i) == ID.getId()){//이 인덱스에다가
+                                System.out.println(i+"번째 인덱스 그림 앨범에" + ID.getId()+"가 "+((i+cur)%part.size())+"인덱스로 그림을 셋팅했습니다.");
+                                pictureData.set((i+cur)%part.size(),data);//해당하는 라운드에 맞는 데이터를 넣기
                             }
                         }
-                        MOD outMsg = new MOD(SUCCESSED);
-                        outputStream.writeObject(outMsg);//성공
+                    }
+                    case NEXT_ROUND -> {//다음 라운드로 넘기기
+                        System.out.println("다음 라운드로 넘어갑니다.");
+                        main.rm.WaitReset(room);//현재 방 리셋 시작
+                        main.rm.nextRound(room);//한 방에 한 번만 시행되어야 함.
+                    }
+                    case TEMP,WAITING->{//게임 끝?
+                        //해당 모든 방에 아이들이 끝인지 확인
+                        //일단 끝났는지 true
+                        main.Roomnext = new ServerProcessing.RoomNext(room);
+                        main.Roomnext.start();
+                        main.rm.WaitIncrease(room);//내 거 하나 증가
                     }
                     case GAME_END -> {
                         Vector<Picture>P= main.pm.getAlbum(room);
                         Room r = main.rm.getRoom(room);
+                        int j=0;
                         for(Picture temP : P){
+                            for(int i=0;i< temP.getFiles().size();i++){
+                                System.out.println(j+"의 "+i+"번째가 : " + temP.getFiles().get(i)+"입니다.");
+                            }
                             Picture outMsg = new Picture(temP);
                             outputStream.writeObject(outMsg);
+                            j++;
                         }
                         MOD outMsg = new MOD(SUCCESSED);
                         outputStream.writeObject(outMsg);
@@ -217,23 +227,7 @@ public class Client extends Thread{
         }
     }
 
-    private void RoomSpreadData() {//지금 접속한 룸에 있는 모든 사람들에게 뿌려주기
-        Room r = main.rm.getRoom(room);//실시간으로 방 갖고 오고
-        Vector<Picture> data = main.pm.getAlbum(r);//현재 방에 대한 데이터
-        //라운드에 따라 하나씩 밀려서 사진 파일 보내기
-        Vector<Integer>part = r.getParticipant();
-        for(int i=0;i< part.size();i++){
-            int id = part.get(i);
-            Client c = main.cm.IDtoClient.get(id);//i번째 클라이언트
-            Picture outMsg = data.get(i+r.getRound()-1);//1라운드면
-            outMsg.setMod(PICTURE_MODE);//사진 데이터
-            try {
-                c.outputStream.writeObject(outMsg);
-            } catch (IOException e) {
-                System.out.println("해당 클라이언트에게 사진데이터를 보내지 못 했습니다.");
-            }
-        }
-    }
+
 
     public void SameRoomBroadCast(MOD outMsg){//방장이 보내는 거임
         Room r = main.rm.getRoom(this.room);//현재 방정보를 토대로 서버에 저장된 방 갖고 오기

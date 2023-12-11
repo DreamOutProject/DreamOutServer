@@ -1,5 +1,8 @@
 package com.Main;
 
+import com.CommunicateObject.MOD;
+import com.CommunicateObject.Picture;
+import com.CommunicateObject.Room;
 import com.CommunicateObject.User;
 import com.Manage.*;
 import com.UI.MainUI;
@@ -11,6 +14,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Vector;
+
+import static com.CommunicateObject.MODE.PICTURE_MODE;
+import static com.CommunicateObject.MODE.SUCCESSED;
 
 public class ServerProcessing {
     public int port =54321;
@@ -18,18 +25,23 @@ public class ServerProcessing {
     public JFrame mainFrame;
     public ObjectOutputStream mainOutput;
     public ObjectInputStream mainInput;
-    public RoomManage rm;
+    public static RoomManage rm;
     public UserManage um;
-    public ClientManage cm;
+    public static ClientManage cm;
     public PictureManage pm;
     public boolean flag =false;
     public Thread clientAccept=null;
+    public JFrame paintTest;
+    public Thread Roomnext;
     public ServerProcessing(){
         rm = new RoomManage();
         um = new UserManage();
         cm = new ClientManage();
         pm = new PictureManage();
-
+        paintTest = new JFrame("그림 데이터 파일만 받아들이기");
+        paintTest.setLayout(new GridLayout(0,1));
+        paintTest.setSize(500,300);
+        paintTest.setVisible(true);
         um.register(new User(1,1));
         um.register(new User(2,2));
         um.register(new User(3,3));
@@ -80,6 +92,40 @@ public class ServerProcessing {
             }
         }else{
             JOptionPane.showMessageDialog(null,"서버가 열리지 않았습니다","정보",JOptionPane.WARNING_MESSAGE);
+        }
+    }
+    public static class RoomNext extends Thread{
+        Room room;
+        public RoomNext(Room r){
+            room = rm.getRoom(r);
+        }
+        @Override
+        public void run() {
+            super.run();
+            int total = rm.getRoom(room).getParticipant().size();
+            while(rm.getWait(room)!=total){ //애들 다같이 끝나게 하기
+                try {
+                    sleep(50);
+                } catch (InterruptedException e) {
+                    System.out.println("뿌려줄까?");
+                }
+            }
+            RoomSpreadData();
+        }
+        private void RoomSpreadData() {//지금 접속한 룸에 있는 모든 사람들에게 뿌려주기
+            Room r = rm.getRoom(room);//실시간으로 방 갖고 오고
+            //라운드에 따라 하나씩 밀려서 사진 파일 보내기
+            Vector<Integer>part = r.getParticipant();
+            MOD outMsg = new MOD(SUCCESSED);
+            for(int i=0;i< part.size();i++){
+                int id = part.get(i);
+                Client c = cm.IDtoClient.get(id);//i번째 클라이언트
+                try {
+                    c.outputStream.writeObject(outMsg);
+                } catch (IOException e) {
+                    System.out.println("모든 클라이언트에게 데이터를 보내지 못 했습니다.");
+                }
+            }
         }
     }
 }

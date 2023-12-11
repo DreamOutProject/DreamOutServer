@@ -5,12 +5,37 @@ import com.CommunicateObject.Room;
 import com.CommunicateObject.User;
 
 import java.util.Map;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RoomManage extends Manage{
-    private Map<Integer, Integer>Wait;//모두 끝이 났는지 파악하기 위해
+    public final Vector<Integer> Wait;//현재 방에 기다리고 있는 사람의 수
+    public Vector<Integer>Roomid;//wait를 가리키는 포인터 느낌
     public RoomManage(){
-        Wait = new ConcurrentHashMap<>();//생성
+
+        Wait = new Vector<>();//생성
+        Roomid = new Vector<>();
+    }
+    public boolean WaitReset(Room r){
+        for(int i=0;i<Roomid.size();i++){
+            if(r.getRoomId() == Roomid.get(i)){
+                synchronized (Wait){
+                    Wait.set(i,0);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    public synchronized void WaitIncrease(Room r){
+        for(int i=0;i<Roomid.size();i++){
+            if(r.getRoomId() == Roomid.get(i)){
+                synchronized (Wait){
+                    int cnt = Wait.get(i);
+                    Wait.set(i,cnt+1);
+                }
+            }
+        }
     }
     @Override
     public boolean isContain(Object o) {
@@ -99,15 +124,17 @@ public class RoomManage extends Manage{
         return false;
     }
 
-    public void newWait(Room room) {
-        Wait.put(room.getRoomId(),0);//데이터 새로 만들기
-    }
-    public synchronized void setWait(Room room){
-        int waitCnt = Wait.get(room.getRoomId());
-        Wait.put(room.getRoomId(),waitCnt+1);
-        System.out.println("Wait cnt : " + Wait.get(room.getRoomId()));
+    public synchronized void newWait(Room room) {
+        Roomid.add(room.getRoomId());
+        Wait.add(0);//0이라고 넣기
     }
     public int getWait(Room room){
-        return Wait.get(room.getRoomId());
+        int value=0;
+        for(int i=0;i< Roomid.size();i++){
+            if(room.getRoomId() == Roomid.get(i)){
+                value = Wait.get(i);
+            }
+        }
+        return value;
     }
 }
