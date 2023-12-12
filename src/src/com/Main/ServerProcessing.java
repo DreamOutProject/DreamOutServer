@@ -31,17 +31,12 @@ public class ServerProcessing {
     public PictureManage pm;
     public boolean flag =false;
     public Thread clientAccept=null;
-    public JFrame paintTest;
     public Thread Roomnext;
     public ServerProcessing(){
         rm = new RoomManage();
         um = new UserManage();
         cm = new ClientManage();
         pm = new PictureManage();
-        paintTest = new JFrame("그림 데이터 파일만 받아들이기");
-        paintTest.setLayout(new GridLayout(0,1));
-        paintTest.setSize(500,300);
-        paintTest.setVisible(true);
         um.register(new User(1,1));
         um.register(new User(2,2));
         um.register(new User(3,3));

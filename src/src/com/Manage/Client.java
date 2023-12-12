@@ -143,14 +143,6 @@ public class Client extends Thread{
                         Room r = main.rm.getRoom(room);
                         Picture data = (Picture) msg;
                         System.out.println(data.getFiles().get(r.getRound()-1).getIcon());
-                        for(int i=0;i<data.getFiles().size();i++){
-                            if(data.getFiles().get(i)==null)continue;
-                            main.paintTest.add(data.getFiles().get(i));
-                        }
-                        main.paintTest.repaint();
-                        main.paintTest.revalidate();
-                        int cur = r.getRound()-1;//현재 라운드..
-                        Vector<Integer>part = r.getParticipant();//같은 방 안에 있는 데이터
                         main.pm.setRoundAlbum(r,data,ID);//해당하는 라운드에 맞는 데이터를 넣기
                     }
                     case NEXT_ROUND -> {//다음 라운드로 넘기기
@@ -168,14 +160,9 @@ public class Client extends Thread{
                         main.rm.EndGame(room);
                         Vector<Picture>P= new Vector<>(main.pm.getAlbum(room));
                         Room r = main.rm.getRoom(room);
-                        int j=0;
                         for(Picture temP : P){
-                            for(int i=0;i< temP.getFiles().size();i++){
-                                System.out.println(j+"의 "+i+"번째가 : " + temP.getFiles().get(i)+"입니다.");
-                            }
                             MOD outMsg = new Picture(temP);
                             outputStream.writeObject(outMsg);
-                            j++;
                         }
                         MOD outMsg = new MOD(SUCCESSED);
                         outputStream.writeObject(outMsg);
@@ -200,6 +187,25 @@ public class Client extends Thread{
                             this.room = null;//널 주기
                         }
                         outputStream.writeObject(outMsg);
+                        BroadRepaint();
+                    }
+                    case CATEGORY_ONE->{
+                        main.rm.setTopic(room,1);
+                        SameRoomBroadCast(msg);
+                    }
+                    case CATEGORY_TWO->{
+                        main.rm.setTopic(room,2);
+                        SameRoomBroadCast(msg);
+                    }
+                    case CATEGORY_THREE->{
+                        main.rm.setTopic(room,3);
+                        SameRoomBroadCast(msg);
+                    }case CATEGORY_FOUR->{
+                        main.rm.setTopic(room,4);
+                        SameRoomBroadCast(msg);
+                    }case CATEGORY_FIVE ->{
+                        main.rm.setTopic(room,5);
+                        SameRoomBroadCast(msg);
                     }
                 }
             } catch (IOException | ClassNotFoundException e) {

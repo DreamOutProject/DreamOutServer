@@ -97,6 +97,13 @@ public class RoomManage extends Manage{
         }
         return false;
     }
+    public void setRoom(Room r){
+        for(Object temp:data){
+            if(r.equals(temp)){
+                ((Room)temp).setRound(1);
+            }
+        }
+    }
     @Override
     public boolean add(Object o) {
         if(o instanceof Room r){
@@ -123,11 +130,21 @@ public class RoomManage extends Manage{
         }
         return false;
     }
+    public boolean setTopic(Room r,int idx){
+        for(Object t:data){
+            if(r.equals(t)){//해당하는 방 찾아냄
+                ((Room)t).setTopic(idx);
+                return true;
+            }
+        }
+        return false;
+    }
     public boolean EndGame(Room r){
         for(int i=0;i<Roomid.size();i++){
             if(r.getRoomId() == Roomid.get(i)){
                 Wait.remove(i);
                 Roomid.remove(i);
+                setRoom(r);
                 return true;
             }
         }
